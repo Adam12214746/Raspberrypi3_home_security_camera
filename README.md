@@ -1,19 +1,36 @@
-# Raspberrypi3_home_security_camera
-Raspberry Pi 3-Based Home Security Camera with Face Recognition
+import dlib
+import numpy as np
+import os
+import pickle
 
-This project demonstrates a smart home security camera system built using a Raspberry Pi 3. The system features:
+# Load Dlib's face detection and recognition models
+detector = dlib.get_frontal_face_detector()
+shape_predictor = dlib.shape_predictor('shape_predictor_68_face_landmarks.dat')
+facerec = dlib.face_recognition_model_v1('dlib_face_recognition_resnet_model_v1.dat')
 
-Face Recognition: Identifies authorized users with high accuracy.
-Face Registration: Allows new users to be registered for recognition.
-Notifications: Sends alerts when unregistered or unauthorized faces are detected.
-Features
-Powered by Raspberry Pi 3 with a camera module.
-Utilizes Python-based libraries for face recognition and notifications.
-Remote monitoring and management via network access.
-Compact and scalable for smart home security.
-Components
-Raspberry Pi 3
-Camera module
-MicroSD card (with Raspberry Pi OS)
-Power supply, HDMI cable, and monitor
-This project is a practical implementation of AI-powered security, providing a robust and cost-effective solution for modern homes.
+# Function to get face encodings from known images
+def get_face_encodings(image_folder):
+    known_face_encodings = []
+    known_face_names = []
+
+    for image_name in os.listdir(image_folder):
+        if image_name.endswith('.jpg') or image_name.endswith('.png'):
+            image_path = os.path.join(image_folder, image_name)
+            face_image = dlib.load_rgb_image(image_path)  # Load image using dlib
+            detected_faces = detector(face_image)
+            for face in detected_faces:
+                shape = shape_predictor(face_image, face)
+                face_encoding = np.array(facerec.compute_face_descriptor(face_image, shape))
+                known_face_encodings.append(face_encoding)
+                known_face_names.append(os.path.splitext(image_name)[0])
+                break  # Assuming only one face per image
+
+    return known_face_encodings, known_face_names
+
+# Change the path to your images folder
+images_folder = 'training'
+
+# Save face encodings and names
+known_face_encodings, known_face_names = get_face_encodings(images_folder)
+with open('known_faces.pkl', 'wb') as f:
+    pickle.dump((known_face_encodings, known_face_names), f)
